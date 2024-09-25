@@ -1,11 +1,5 @@
 {
   "dependencies": {
-    "com.kvdw.tools": {
-      "version": "file:C:/Users/koenv/Documents/Dev/UnityPackages/Tools",
-      "depth": 0,
-      "source": "local",
-      "dependencies": {}
-    },
     "com.unity.2d.animation": {
       "version": "9.1.0",
       "depth": 1,
