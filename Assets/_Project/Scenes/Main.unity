@@ -2099,6 +2099,17 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 3140503828578290171, guid: b1be2f808972ea443b0dbbfe8a8f753d, type: 3}
   m_PrefabInstance: {fileID: 5394237749459675732}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1252877235 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6077616333979208501, guid: b1be2f808972ea443b0dbbfe8a8f753d, type: 3}
+  m_PrefabInstance: {fileID: 5394237749459675732}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e675a766de44cc040ad88bbf3f84458b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1373546109
 GameObject:
   m_ObjectHideFlags: 0
@@ -2427,6 +2438,17 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 3140503828578290171, guid: b1be2f808972ea443b0dbbfe8a8f753d, type: 3}
   m_PrefabInstance: {fileID: 2008287056}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1632290308 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6077616333979208501, guid: b1be2f808972ea443b0dbbfe8a8f753d, type: 3}
+  m_PrefabInstance: {fileID: 2008287056}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e675a766de44cc040ad88bbf3f84458b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1654663784
 GameObject:
   m_ObjectHideFlags: 0
@@ -2668,7 +2690,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8c383d1d8b65072419ff197307a76cbc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ComPort: COM12
+  ComPort: COM18
   BaudRate: 9600
   Parity: 0
   StopBits: 1
@@ -2703,6 +2725,8 @@ MonoBehaviour:
   two: 0
   three: 0
   four: 0
+  Player1: {fileID: 1252877235}
+  Player2: {fileID: 1632290308}
 --- !u!1 &1951212093
 GameObject:
   m_ObjectHideFlags: 0
@@ -2956,6 +2980,10 @@ PrefabInstance:
     - target: {fileID: 6077616333979208501, guid: b1be2f808972ea443b0dbbfe8a8f753d, type: 3}
       propertyPath: _downKey
       value: 274
+      objectReference: {fileID: 0}
+    - target: {fileID: 6077616333979208501, guid: b1be2f808972ea443b0dbbfe8a8f753d, type: 3}
+      propertyPath: _serialInput
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8434675681787899956, guid: b1be2f808972ea443b0dbbfe8a8f753d, type: 3}
       propertyPath: m_Name

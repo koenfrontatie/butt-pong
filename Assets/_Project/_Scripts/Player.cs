@@ -2,6 +2,8 @@ using UnityEngine;
 
 public class Player : MonoBehaviour
 {
+    [SerializeField] private bool _serialInput;
+
     [SerializeField]
     private KeyCode _upKey, _downKey;
     [SerializeField]
@@ -19,20 +21,31 @@ public class Player : MonoBehaviour
 
     void Update()
     {
-        float newY = transform.position.y;
 
-        var increment = _heightRange[1] - _heightRange[0] * .01f;
+        if (_serialInput) return;
 
         if (Input.GetKey(_upKey))
         {
-            newY = Mathf.Clamp(newY + _speed * Time.deltaTime, _heightRange[1], _heightRange[0]);
+            MoveUp();
         }
 
         if (Input.GetKey(_downKey))
         {
-            newY = Mathf.Clamp(newY - _speed * Time.deltaTime, _heightRange[1], _heightRange[0]);
+            MoveDown();
         }
+    }
 
+    public void MoveUp()
+    {
+        float newY = transform.position.y;
+        newY = Mathf.Clamp(newY + _speed * Time.deltaTime, _heightRange[1], _heightRange[0]);
+        transform.position = new Vector2(transform.position.x, newY);
+    }
+
+    public void MoveDown()
+    {
+        float newY = transform.position.y;
+        newY = Mathf.Clamp(newY - _speed * Time.deltaTime, _heightRange[1], _heightRange[0]);
         transform.position = new Vector2(transform.position.x, newY);
     }
 }
