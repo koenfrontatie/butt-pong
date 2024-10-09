@@ -1,0 +1,3 @@
+[submodule "Assets/KVDW/kvdw-tools"]
+	path = Assets/KVDW/kvdw-tools
+	url = git@github.com:koenfrontatie/kvdw-tools.git

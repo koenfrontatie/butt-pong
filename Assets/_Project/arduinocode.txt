@@ -1,0 +1,16 @@
+const int LEFT_PIN = A1; //pin A1 to read analog input
+const int RIGHT_PIN = A0; //pin A0 to read analog input
+
+int leftValue;
+int rightValue;
+
+void setup(){
+  Serial.begin(9600);       //Begin serial communication
+}
+
+void loop(){
+  rightValue = analogRead(RIGHT_PIN);       
+  leftValue = analogRead(LEFT_PIN);
+  Serial.println(String(leftValue) + "." + String(rightValue));              
+  delay(100);                          //Small delay 
+}
