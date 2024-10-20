@@ -1,41 +1,73 @@
 using KVDW.Extensions;
 using UnityEngine;
+using System;
 
 public class Player : MonoBehaviour
 {
+    public Action OnBallHit;
+    public Action OnBallCatch;
+
     [SerializeField] private InputType _inputType;
-    [SerializeField] private KeyCode _upKey, _downKey;
+    [SerializeField] private KeyCode _leftKey, _rightKey;
     [SerializeField] private float _speed = 9f;
-    private static readonly float[] _HEIGHTRANGE = { -5, 5 };
-    private SerialReader _serialReader;
+    
+    private PlayerState _playerState;
     private float[] _moveInput = new float[2];
-    private bool _aiming;
+    private readonly float[] _moveRange = { -5, 5 };
+    private SerialReader _serialReader;
     private float _aimAngle;
-    private float orientation;
+    private Vector3 _aimDirection;
+    private Transform _indicator;
+    private Vector3 _initialPosition;
 
     private void Start()
     {
         _serialReader = FindObjectOfType<SerialReader>();
-        orientation = transform.position.GetAngle2D(Vector2.zero);
+        _playerState = PlayerState.Normal;
+        if (transform.Find("Indicator").TryGetComponent(out _indicator)) _indicator.gameObject.Disable();
+        _initialPosition = transform.localPosition;
     }
 
     void Update()
     {
-        HandleInput(GetInputBalanceValue());
+        HandleInput();
     }
 
-    float GetInputBalanceValue()
+    private void HandleInput()
+    {
+        var balance = GetInputBalanceValue();
+
+        switch (_playerState)
+        {
+            case PlayerState.Normal:
+                Vector3 movement = balance * transform.right;
+                Vector3 newPosition = transform.localPosition + movement;
+                float distanceFromStart = Vector3.Dot(newPosition - _initialPosition, transform.right);
+                float clampedDistance = Mathf.Clamp(distanceFromStart, _moveRange[0], _moveRange[1]);
+                transform.localPosition = _initialPosition + clampedDistance * transform.right;
+                break;
+
+            case PlayerState.Aiming:
+                float angleAdjustment = balance.Remap(-1, 1, -_speed, _speed) * -5f;
+                _aimAngle = Mathf.Clamp(_aimAngle + angleAdjustment, -45, 45);
+                _aimDirection = Quaternion.Euler(0, 0, _aimAngle) * transform.up;
+
+                if (_indicator) _indicator.localEulerAngles = new Vector3(0, 0, _aimAngle);
+                break;
+        }
+    }
+    private float GetInputBalanceValue()
     {
         switch (_inputType)
         {
             case InputType.Keyboard:
-                _moveInput[0] = Input.GetKey(_upKey) ? 1 : 0;
-                _moveInput[1] = Input.GetKey(_downKey) ? 1 : 0;
+                _moveInput[0] = Input.GetKey(_leftKey) ? 1 : 0;
+                _moveInput[1] = Input.GetKey(_rightKey) ? 1 : 0;
                 break;
 
             case InputType.Balance:
                 if (_serialReader == null) break;
-
+                // will have to be updated to match the balance board and two ctrls
                 _moveInput[0] = _serialReader.InputValues[0];
                 _moveInput[1] = _serialReader.InputValues[1];
                 break;
@@ -44,27 +76,30 @@ public class Player : MonoBehaviour
         return (_moveInput[0] - _moveInput[1]) * Time.deltaTime * _speed;
     }
 
-    void HandleInput(float balance)
-    {
-        if (!_aiming)
-        {
-            float newY = Mathf.Clamp(transform.position.y + balance, _HEIGHTRANGE[0], _HEIGHTRANGE[1]);
-            transform.position = new Vector3(transform.position.x, newY);
-        }
-        else
-        {
-            _aimAngle = Mathf.Clamp(_aimAngle + balance.Remap(-1, 1, -_speed, _speed) * 2f, -45, 45);
-            float angleMultiplier = transform.position.x < 0 ? 1f : -1f;
-            transform.localRotation = Quaternion.Euler(0, 0, _aimAngle * angleMultiplier);
-        }
-    }
-
+    public Vector3 GetAimDirection() => _aimDirection;
     public void SetAiming(bool aiming)
     {
-        transform.localRotation = Quaternion.Euler(Vector3.zero);
         _aimAngle = 0;
-        _aiming = aiming;
+        _playerState = aiming ? PlayerState.Aiming : PlayerState.Normal;
+        if(_indicator) _indicator.gameObject.SetActive(aiming);
     }
+
+    public float[] MoveInput
+    {
+        get { return _moveInput; }
+    }
+
+//#if UNITY_EDITOR
+//    void OnDrawGizmos()
+//    {
+//        if (_playerState == PlayerState.Aiming)
+//        {
+//            Gizmos.color = Color.white;
+//            Gizmos.DrawRay(transform.position, _aimDirection * 3f);
+//        }
+//    }
+//#endif
+
 }
 
 public enum InputType
@@ -72,97 +107,9 @@ public enum InputType
     Keyboard,
     Balance
 }
-//using KVDW.Extensions;
-//using UnityEngine;
 
-//public class Player: MonoBehaviour
-//{    
-//    [SerializeField] private InputType _inputType;
-//    [SerializeField] PlayerIndex _playerIndex;
-//    [SerializeField] private KeyCode _upKey, _downKey;
-//    [SerializeField] private float _speed = 9f;
-//    private static readonly float[] _HEIGHTRANGE = { -5, 5 };
-//    private SerialReader _serialReader;
-//    private float[] _moveInput = new float[2];
-//    private bool _aiming;
-//    private float _aimAngle;
-//    private float orientation;
-
-//    private void Start()
-//    {
-//        _serialReader = FindObjectOfType<SerialReader>();
-//        orientation = transform.position.GetAngle2D(Vector2.zero);
-//    }
-
-//    void Update()
-//    {
-//        HandleInput(GetInputBalanceValue());
-//    }
-
-//    float GetInputBalanceValue()
-//    {
-//        switch (_inputType)
-//        {
-//            case InputType.Keyboard:
-//                _moveInput[0] = Input.GetKey(_upKey) ? 1 : 0;
-//                _moveInput[1] = Input.GetKey(_downKey) ? 1 : 0;
-//                break;
-
-//            case InputType.Balance:
-//                if (_serialReader == null) break;
-
-//                if (_playerIndex == PlayerIndex.Player1)
-//                {
-//                    _moveInput[0] = _serialReader.InputValues[0];
-//                    _moveInput[1] = _serialReader.InputValues[1];
-//                }
-//                else
-//                {
-//                    _moveInput[0] = _serialReader.InputValues[2];
-//                    _moveInput[1] = _serialReader.InputValues[3];
-//                }
-//                break;
-//        }
-
-//        return (_moveInput[0] - _moveInput[1]) * Time.deltaTime * _speed;
-//    }
-//    void HandleInput(float balance)
-//    {
-//        if (!_aiming)
-//        {
-//            float newY = Mathf.Clamp(transform.position.y + balance, _HEIGHTRANGE[0], _HEIGHTRANGE[1]);
-//            transform.position = new Vector3(transform.position.x, newY);
-//        }
-//        else
-//        {
-//            _aimAngle = Mathf.Clamp(_aimAngle + balance.Remap(-1, 1, -_speed, _speed) * 2f, -45, 45);
-
-//            if(_playerIndex == PlayerIndex.Player1)
-//            {
-//                transform.localRotation = Quaternion.Euler(0, 0, _aimAngle);
-//            } else
-//            {
-//                transform.localRotation = Quaternion.Euler(0, 0, _aimAngle * -1f);
-//            }
-//        }
-//    }
-
-//    public void SetAiming(bool aiming)
-//    {
-//        transform.localRotation = Quaternion.Euler(Vector3.zero);
-//        _aimAngle = 0;
-//        _aiming = aiming;
-//    }
-//}
-
-//public enum InputType
-//{
-//    Keyboard,
-//    Balance
-//}
-
-//public enum PlayerIndex
-//{
-//    Player1,
-//    Player2
-//}
+public enum PlayerState
+{
+    Normal,
+    Aiming
+}
