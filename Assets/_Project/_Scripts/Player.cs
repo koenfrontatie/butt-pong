@@ -17,7 +17,7 @@ public class Player : MonoBehaviour
     private SerialReader _serialReader;
     private float _aimAngle;
     private Vector3 _aimDirection;
-    private Transform _indicator;
+    private Transform _indicator, _arc;
     private Vector3 _initialPosition;
 
     private void Start()
@@ -25,6 +25,8 @@ public class Player : MonoBehaviour
         _serialReader = FindObjectOfType<SerialReader>();
         _playerState = PlayerState.Normal;
         if (transform.Find("Indicator").TryGetComponent(out _indicator)) _indicator.gameObject.Disable();
+        if (transform.Find("Arc").TryGetComponent(out _arc)) _indicator.gameObject.Disable();
+
         _initialPosition = transform.localPosition;
     }
 
@@ -82,6 +84,7 @@ public class Player : MonoBehaviour
         _aimAngle = 0;
         _playerState = aiming ? PlayerState.Aiming : PlayerState.Normal;
         if(_indicator) _indicator.gameObject.SetActive(aiming);
+        if (_arc) _arc.gameObject.SetActive(aiming);
     }
 
     public float[] MoveInput

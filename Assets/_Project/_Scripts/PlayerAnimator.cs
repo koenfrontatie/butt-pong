@@ -4,23 +4,9 @@ using System;
 public class PlayerAnimator : MonoBehaviour
 {
     [SerializeField] private Player _player;
-    private Animator _anim;
-    private float _lockedTill;
-
-    private enum PlayerState
-    {
-        Idle,
-        Left,
-        LeftStart,
-        Right,
-        RightStart,
-        Bump,
-        Catch
-    }
-
     private PlayerState _currentState = PlayerState.Idle;
-    private PlayerState _lastMovementState = PlayerState.Idle;
-    private bool _transitioning = true;
+    private Animator _anim;
+    private float _unlockTime;
 
     private void Awake()
     {
@@ -36,82 +22,50 @@ public class PlayerAnimator : MonoBehaviour
 
     private void Update()
     {
-        if (Time.time >= _lockedTill)
+        if (Time.time <= _unlockTime) return;
+        var newState = GetState();
+        if (newState != _currentState)
         {
-            var newState = GetState();
-            if (newState != _currentState)
-            {
-                PlayAnimation(newState);
-            }
+            PlayAnimation(newState);
         }
     }
 
     private PlayerState GetState()
     {
-        PlayerState newState = _currentState;
-
-        if (_player.MoveInput[0] > 0 && _player.MoveInput[0] > _player.MoveInput[1])
+        if (_player.MoveInput[0] > 0 && _player.MoveInput[0] > _player.MoveInput[1]) // condition for left
         {
-            newState = HandleHorizontalMovement(PlayerState.Left, PlayerState.LeftStart);
+            return _currentState != PlayerState.Left && _currentState != PlayerState.LeftStart
+                ? LockState(PlayerState.LeftStart, 11) 
+                : PlayerState.Left;
         }
-        else if (_player.MoveInput[1] > 0 && _player.MoveInput[1] > _player.MoveInput[0])
+        else if (_player.MoveInput[1] > 0 && _player.MoveInput[1] > _player.MoveInput[0]) // condition for right
         {
-            newState = HandleHorizontalMovement(PlayerState.Right, PlayerState.RightStart);
+            return _currentState != PlayerState.Right && _currentState != PlayerState.RightStart // checks if transition is needed
+                ? LockState(PlayerState.RightStart, 11)
+                : PlayerState.Right;
         }
-        else if (_player.MoveInput[0] == 0 && _player.MoveInput[1] == 0)
+        else
         {
-            newState = PlayerState.Idle;
-        }
-
-        CheckTransitioning(newState);
-        return newState;
-    }
-
-    private PlayerState HandleHorizontalMovement(PlayerState moveState, PlayerState startState)
-    {
-        if (_transitioning)
-        {
-            _transitioning = false;
-            return startState;
-        }
-        return moveState;
-    }
-
-    private PlayerState LockState(PlayerState state, int frames)
-    {
-        float animLength = (frames / 24f) / _anim.speed;
-        _lockedTill = Time.time + animLength;
-        return state;
-    }
-
-    private void CheckTransitioning(PlayerState newState)
-    {
-        _transitioning =
-            _currentState == PlayerState.Idle && (newState == PlayerState.Left || newState == PlayerState.Right) ||
-            (_currentState == PlayerState.Left && newState == PlayerState.Right) ||
-            (_currentState == PlayerState.Right && newState == PlayerState.Left) ||
-            _currentState == PlayerState.Catch;
-
-        if (newState == PlayerState.Left || newState == PlayerState.Right)
-        {
-            _lastMovementState = newState;
+            return PlayerState.Idle;
         }
     }
 
     private void TryPlayBumpAnimation()
     {
-        if (Time.time >= _lockedTill && _currentState != PlayerState.Catch)
-        {
-            PlayAnimation(LockState(PlayerState.Bump, 11));
-        }
+        if (_currentState == PlayerState.Catch) return;
+        PlayAnimation(LockState(PlayerState.Bump, 11));
     }
 
     private void TryPlayCatchAnimation()
     {
-        if (Time.time >= _lockedTill)
-        {
-            PlayAnimation(LockState(PlayerState.Catch, 24));
-        }
+        PlayAnimation(LockState(PlayerState.Catch, 24));
+    }
+
+    private PlayerState LockState(PlayerState state, int frames)
+    {
+        float animLength = (frames / 24f) / _anim.speed;
+        _unlockTime = Time.time + animLength;
+        return state;
     }
 
     private void PlayAnimation(PlayerState state)
@@ -119,12 +73,22 @@ public class PlayerAnimator : MonoBehaviour
         _currentState = state;
         string animationName = Enum.GetName(typeof(PlayerState), state);
         _anim.CrossFade(animationName, 0, 0);
-        Debug.Log(animationName);
     }
 
     private void OnDisable()
     {
         _player.OnBallHit -= TryPlayBumpAnimation;
         _player.OnBallCatch -= TryPlayCatchAnimation;
+    }
+
+    private enum PlayerState
+    {
+        Idle,
+        LeftStart,
+        Left,
+        RightStart,
+        Right,
+        Bump,
+        Catch
     }
 }
