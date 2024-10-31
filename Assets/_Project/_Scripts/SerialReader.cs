@@ -7,9 +7,9 @@ public class SerialReader : MonoBehaviour
     public float[] InputValues = new float[4];
     private UnitySerialPort _serialPort;
     private float[] _serialInputValues = new float[4];
-    private float[] _serialInputCeilings = new float[] { 1f, 1f, 1f, 1f };
+    //private float[] _serialInputCeilings = new float[] { 1f, 1f, 1f, 1f };
     
-    public float _minimumCompensation = .2f;
+    public float _minimumCompensation = 200f;
 
     void Start()
     {
@@ -33,14 +33,15 @@ public class SerialReader : MonoBehaviour
 
         string pData = data[0].Trim();
 
-        float[] parsedValues = Array.ConvertAll(pData.Split('.'), float.Parse);
+        //float[] parsedValues = Array.ConvertAll(pData.Split('.'), float.Parse);
+        _serialInputValues = Array.ConvertAll(pData.Split('.'), float.Parse); 
 
-        for (int i = 0; i < parsedValues.Length && i < InputValues.Length; i++)
+        for (int i = 0; i < _serialInputValues.Length && i < InputValues.Length; i++)
         {
-            _serialInputCeilings[i] = parsedValues[i] > _serialInputCeilings[i] ? parsedValues[i] : _serialInputCeilings[i];
+            //_serialInputCeilings[i] = parsedValues[i] > _serialInputCeilings[i] ? parsedValues[i] : _serialInputCeilings[i];
 
             // this normalizes the input values to a range of 0 to 1
-            InputValues[i] = parsedValues[i].Remap(_minimumCompensation, _serialInputCeilings[i], 0, 1);
+            InputValues[i] = _serialInputValues[i].Remap(_minimumCompensation, 900f, 0, 1);
         }
     }
 }
