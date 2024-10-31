@@ -8,6 +8,8 @@ public class SerialReader : MonoBehaviour
     private UnitySerialPort _serialPort;
     private float[] _serialInputValues = new float[4];
     private float[] _serialInputCeilings = new float[] { 1f, 1f, 1f, 1f };
+    
+    public float _minimumCompensation = .2f;
 
     void Start()
     {
@@ -38,7 +40,7 @@ public class SerialReader : MonoBehaviour
             _serialInputCeilings[i] = parsedValues[i] > _serialInputCeilings[i] ? parsedValues[i] : _serialInputCeilings[i];
 
             // this normalizes the input values to a range of 0 to 1
-            InputValues[i] = parsedValues[i].Remap(0, _serialInputCeilings[i], 0, 1);
+            InputValues[i] = parsedValues[i].Remap(_minimumCompensation, _serialInputCeilings[i], 0, 1);
         }
     }
 }
