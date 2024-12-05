@@ -1,26 +1,38 @@
-using System;
 using UnityEngine;
-using KVDW.Extensions;
-using System.Collections.Generic;
-using System.Linq;
+using System;
 
 public class SerialReader : MonoBehaviour
 {
-    public float[] InputValues = new float[4];
-    private UnitySerialPort _serialPort;
-    
-    private float[] _serialInputValues = new float[4];
-    private float[] _smoothedValues = new float[4];
-    public float _minimumCompensation = 200f;
+    public static SerialReader Instance { get; private set; }
 
-    private List<float[]> _inputsToAverage = new List<float[]>();
-    private int maxAverageValues = 5;
+    [Header("Debug")]
+    [SerializeField] private bool showDebugLog = true;  // Set to true by default for debugging
+
+    private UnitySerialPort _serialPort;
+    private float[] InputValues = new float[4];
+
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
 
     void Start()
     {
-        if (transform.TryGetComponent(out _serialPort))
+        if (TryGetComponent(out _serialPort))
         {
             UnitySerialPort.SerialDataParseEvent += OnSerialDataParse;
+            Debug.Log("SerialReader initialized successfully");
+        }
+        else
+        {
+            Debug.LogError("No SerialPort component found!");
         }
     }
 
@@ -32,77 +44,106 @@ public class SerialReader : MonoBehaviour
         }
     }
 
-    private float[] AddValueGetAverage(float[] newValue)
-    {
-        // Ensure newValue has exactly 4 elements by padding with default values if necessary
-        if (newValue.Length < 4)
-        {
-            Array.Resize(ref newValue, 4);
-        }
-
-        _inputsToAverage.Add(newValue);
-
-        // Maintain only the last maxAverageValues entries
-        if (_inputsToAverage.Count > maxAverageValues)
-        {
-            _inputsToAverage.RemoveAt(0);
-        }
-
-        var averagedInput = new float[4];
-
-        // Calculate the average for each of the four elements
-        for (int i = 0; i < 4; i++)
-        {
-            averagedInput[i] = _inputsToAverage
-                .Where(values => values.Length > i) // Only consider arrays that have a value at this index
-                .Select(values => values[i])
-                .Average();
-        }
-
-        return averagedInput;
-    }
-
     void OnSerialDataParse(string[] data, string rawData)
     {
-        if (data == null || data.Length == 0) return;
+        if (data == null || data.Length == 0)
+        {
+            Debug.LogWarning("Received null or empty data");
+            return;
+        }
 
+        Debug.Log($"Raw serial data received: {rawData}"); // Log raw data
         string pData = data[0].Trim();
+        Debug.Log($"Processed data string: {pData}"); // Log processed string
 
         try
         {
-            // Split and parse input data, handling potential format issues
-            string[] splitData = pData.Split('.');
-            List<float> parsedValues = new List<float>();
+            string[] values = pData.Split('.');
+            Debug.Log($"Split values count: {values.Length}"); // Log number of values
 
-            foreach (string value in splitData)
+            // Log each value before parsing
+            for (int i = 0; i < values.Length; i++)
             {
-                if (float.TryParse(value, out float parsedValue))
+                Debug.Log($"Value {i}: {values[i]}");
+            }
+
+            // Parse all values (up to 4)
+            for (int i = 0; i < Mathf.Min(values.Length, 4); i++)
+            {
+                if (float.TryParse(values[i], out float value))
                 {
-                    parsedValues.Add(parsedValue);
+                    InputValues[i] = value;
+                    Debug.Log($"Successfully parsed value {i}: {value}");
                 }
                 else
                 {
-                    //Debug.Log($"Warning: Unable to parse '{value}' as a float.");
-                    //parsedValues.Add(0f); // Add default value if parsing fails
+                    Debug.LogWarning($"Failed to parse value {i}: {values[i]}");
                 }
             }
 
-            _serialInputValues = parsedValues.ToArray();
-            if (_serialInputValues.Length < 4)
-            {
-                Array.Resize(ref _serialInputValues, 4); // Pad with 0s if fewer than 4 values
-            }
-
-            _smoothedValues = AddValueGetAverage(_serialInputValues);
-
-            for (int i = 0; i < _smoothedValues.Length && i < InputValues.Length; i++)
-            {
-                InputValues[i] = _smoothedValues[i].Remap(0, 1023, 0, 1);
-            }
+            // Log current state of InputValues
+            Debug.Log($"Current InputValues: P1L={InputValues[0]}, P1R={InputValues[1]}, P2L={InputValues[2]}, P2R={InputValues[3]}");
         }
         catch (Exception ex)
         {
-            //Debug.Log($"Error parsing serial data: {ex.Message}");
+            Debug.LogError($"Error parsing serial data: {ex.Message}");
         }
+    }
+
+    public bool TryGetRawInput(out float leftValue, out float rightValue)
+    {
+        leftValue = 0f;
+        rightValue = 0f;
+
+        if (InputValues.Length < 2)
+        {
+            Debug.LogWarning("InputValues array too small");
+            return false;
+        }
+
+        leftValue = InputValues[0];
+        rightValue = InputValues[1];
+
+        if (showDebugLog)
+        {
+            Debug.Log($"Getting P1 input - Left: {leftValue}, Right: {rightValue}");
+        }
+
+        return true;
+    }
+
+    public bool TryGetRawInput(int playerIndex, out float leftValue, out float rightValue)
+    {
+        leftValue = 0f;
+        rightValue = 0f;
+
+        int startIndex = (playerIndex - 1) * 2;
+        if (startIndex < 0 || startIndex + 1 >= InputValues.Length)
+        {
+            Debug.LogWarning($"Invalid player index: {playerIndex}");
+            return false;
+        }
+
+        leftValue = InputValues[startIndex];
+        rightValue = InputValues[startIndex + 1];
+
+        if (showDebugLog)
+        {
+            Debug.Log($"Getting P{playerIndex} input - Left: {leftValue}, Right: {rightValue}");
+        }
+
+        return true;
+    }
+
+    // Helper method to see all values in the Inspector
+    void OnGUI()
+    {
+        if (!showDebugLog) return;
+
+        GUILayout.BeginArea(new Rect(10, 10, 300, 100));
+        GUILayout.Label("Serial Input Values:");
+        GUILayout.Label($"P1: L={InputValues[0]:F1}, R={InputValues[1]:F1}");
+        GUILayout.Label($"P2: L={InputValues[2]:F1}, R={InputValues[3]:F1}");
+        GUILayout.EndArea();
     }
 }

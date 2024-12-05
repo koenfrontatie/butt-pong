@@ -1,114 +1,97 @@
-using KVDW.Extensions;
 using UnityEngine;
 using System;
 
 public class Player : MonoBehaviour
 {
+    [Header("Player Settings")]
+    [SerializeField] private int playerNumber = 1;
+    [SerializeField] private float speed = 4f;
+    [SerializeField] private Vector2 moveRange = new Vector2(-5f, 5f);
+    [SerializeField] private float inputDifferenceThreshold = 0.5f; // Minimum difference needed
+
+
     public Action OnBallHit;
     public Action OnBallCatch;
 
-    [SerializeField] private InputType _inputType;
-    [SerializeField] private KeyCode _leftKey, _rightKey;
-    [SerializeField] private float _speed = 9f;
-    
-    private PlayerState _playerState;
-    private float[] _moveInput = new float[2];
-    private readonly float[] _moveRange = { -5, 5 };
-    private SerialReader _serialReader;
-    private float _aimAngle;
-    private Vector3 _aimDirection;
-    private Transform _indicator, _arc;
-    private Vector3 _initialPosition;
+    private Vector3 initialPosition;
+    private PlayerState playerState = PlayerState.Normal;
+    private float aimAngle;
+    private Vector3 aimDirection;
+    private Vector2 currentInput;
+    private Transform indicator;
+    private Transform arc;
+    private PlayerCalibration calibration;
+    private SerialReader serialReader;
 
-    private void Start()
+    public Vector2 MoveInput => currentInput; // For animator
+
+    void Start()
     {
-        _serialReader = FindObjectOfType<SerialReader>();
-        _playerState = PlayerState.Normal;
-        if (transform.Find("Indicator").TryGetComponent(out _indicator)) _indicator.gameObject.Disable();
-        if (transform.Find("Arc").TryGetComponent(out _arc)) _indicator.gameObject.Disable();
+        initialPosition = transform.localPosition;
+        calibration = GetComponent<PlayerCalibration>();
+        serialReader = FindObjectOfType<SerialReader>();
 
-        _initialPosition = transform.localPosition;
+        if (transform.Find("Indicator").TryGetComponent(out indicator))
+            indicator.gameObject.SetActive(false);
+        if (transform.Find("Arc").TryGetComponent(out arc))
+            arc.gameObject.SetActive(false);
     }
 
     void Update()
     {
-        HandleInput();
-    }
-
-    private void HandleInput()
-    {
-        var balance = GetInputBalanceValue();
-
-        switch (_playerState)
+        // Calibration input check
+        if ((playerNumber == 1 && Input.GetKeyDown(KeyCode.Alpha1)) ||
+            (playerNumber == 2 && Input.GetKeyDown(KeyCode.Alpha2)))
         {
-            case PlayerState.Normal:
-                Vector3 movement = balance * transform.right;
-                Vector3 newPosition = transform.localPosition + movement;
-                float distanceFromStart = Vector3.Dot(newPosition - _initialPosition, transform.right);
-                float clampedDistance = Mathf.Clamp(distanceFromStart, _moveRange[0], _moveRange[1]);
-                transform.localPosition = _initialPosition + clampedDistance * transform.right;
-                break;
-
-            case PlayerState.Aiming:
-                float angleAdjustment = balance.Remap(-1, 1, -_speed, _speed) * -5f;
-                _aimAngle = Mathf.Clamp(_aimAngle + angleAdjustment, -45, 45);
-                _aimDirection = Quaternion.Euler(0, 0, _aimAngle) * transform.up;
-
-                if (_indicator) _indicator.localEulerAngles = new Vector3(0, 0, _aimAngle);
-                break;
-        }
-    }
-    private float GetInputBalanceValue()
-    {
-        switch (_inputType)
-        {
-            case InputType.Keyboard:
-                _moveInput[0] = Input.GetKey(_leftKey) ? 1 : 0;
-                _moveInput[1] = Input.GetKey(_rightKey) ? 1 : 0;
-                break;
-
-            case InputType.Balance:
-                if (_serialReader == null) break;
-                // will have to be updated to match the balance board and two ctrls
-                _moveInput[0] = _serialReader.InputValues[0];
-                _moveInput[1] = _serialReader.InputValues[1];
-                break;
+            calibration.StartCalibration();
+            return;
         }
 
-        return (_moveInput[0] - _moveInput[1]) * Time.deltaTime * _speed;
+        // Get and process input
+        if (serialReader.TryGetRawInput(playerNumber, out float leftValue, out float rightValue))
+        {
+            currentInput = calibration.GetCalibratedInput(new Vector2(leftValue, rightValue));
+
+            if (playerState == PlayerState.Normal)
+            {
+                // Calculate difference between inputs
+                float inputDifference;
+                if (playerNumber == 1)
+                {
+                    inputDifference = currentInput.x - currentInput.y;
+                }
+                else // Player 2
+                {
+                    inputDifference = currentInput.y - currentInput.x;
+                }
+
+                // Only move if the difference is significant enough
+                float movement = 0f;
+                if (Mathf.Abs(inputDifference) > inputDifferenceThreshold)
+                {
+                    movement = inputDifference * speed * Time.deltaTime;
+                }
+
+                Vector3 newPosition = transform.localPosition + new Vector3(0, movement, 0);
+                float distanceFromStart = newPosition.y - initialPosition.y;
+                float clampedDistance = Mathf.Clamp(distanceFromStart, moveRange.x, moveRange.y);
+                transform.localPosition = new Vector3(initialPosition.x, initialPosition.y + clampedDistance, initialPosition.z);
+            }
+        }
     }
 
-    public Vector3 GetAimDirection() => _aimDirection;
     public void SetAiming(bool aiming)
     {
-        _aimAngle = 0;
-        _playerState = aiming ? PlayerState.Aiming : PlayerState.Normal;
-        if(_indicator) _indicator.gameObject.SetActive(aiming);
-        if (_arc) _arc.gameObject.SetActive(aiming);
+        aimAngle = 0;
+        playerState = aiming ? PlayerState.Aiming : PlayerState.Normal;
+
+        if (indicator)
+            indicator.gameObject.SetActive(aiming);
+        if (arc)
+            arc.gameObject.SetActive(aiming);
     }
 
-    public float[] MoveInput
-    {
-        get { return _moveInput; }
-    }
-
-//#if UNITY_EDITOR
-//    void OnDrawGizmos()
-//    {
-//        if (_playerState == PlayerState.Aiming)
-//        {
-//            Gizmos.color = Color.white;
-//            Gizmos.DrawRay(transform.position, _aimDirection * 3f);
-//        }
-//    }
-//#endif
-
-}
-
-public enum InputType
-{
-    Keyboard,
-    Balance
+    public Vector3 GetAimDirection() => aimDirection;
 }
 
 public enum PlayerState
